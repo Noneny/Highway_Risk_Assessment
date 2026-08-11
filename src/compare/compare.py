@@ -176,6 +176,7 @@ def insert_data_to_db(df, contrast_period, db_config):
 
     print(f"  转换对比周期: {contrast_period} -> 归属日期: {belong_date}")
 
+    connection = None
     try:
         # 连接数据库
         connection = pymysql.connect(
@@ -228,16 +229,38 @@ def insert_data_to_db(df, contrast_period, db_config):
                     asso_company
                 ))
 
-            cursor.executemany(insert_sql, data_to_insert)
-            print(f"✓ 已插入 {len(data_to_insert)} 条记录到数据库")
+            inserted_count = 0
+            duplicate_count = 0
+            for record in data_to_insert:
+                try:
+                    cursor.execute(insert_sql, record)
+                    inserted_count += 1
+                except pymysql.err.IntegrityError as e:
+                    if e.args and e.args[0] == 1062:
+                        duplicate_count += 1
+                        print(
+                            "  ⚠ 跳过重复记录: "
+                            f"结构名称={record[3]}, 方向={record[4]}, "
+                            f"归属日期={record[1]}"
+                        )
+                        continue
+                    raise
+
+            print(f"✓ 已插入 {inserted_count} 条记录到数据库")
+            if duplicate_count > 0:
+                print(f"⚠ 跳过重复记录: {duplicate_count} 条")
 
         connection.commit()
-        connection.close()
         return True
 
     except Error as e:
+        if connection:
+            connection.rollback()
         print(f"❌ 数据库插入失败: {e}")
         return False
+    finally:
+        if connection:
+            connection.close()
 
 
 # ================= 核心逻辑 =================
