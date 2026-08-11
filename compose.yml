@@ -1,0 +1,38 @@
+services:
+  risk-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    volumes:
+      - ./config:/app/config
+      - ./data:/app/data
+      - ./log:/app/log
+      - ${ETC_DATA_DIR:-./data/etc}:/ETC_Data:ro
+    ports:
+      - "8000:8000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
+
+  java-service:
+    build:
+      context: ./java-service
+      dockerfile: Dockerfile
+    environment:
+      RISK_API_BASE_URL: http://risk-api:8000
+      RISK_API_CONNECT_TIMEOUT: 5s
+      RISK_API_READ_TIMEOUT: 30s
+    ports:
+      - "8080:8080"
+    depends_on:
+      risk-api:
+        condition: service_healthy
+    restart: unless-stopped

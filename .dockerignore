@@ -1,0 +1,14 @@
+.idea/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+.env
+tests/
+java-service/target/
+data/
+log/
+config/input_db.ini
+config/output_db.ini
+*.log
