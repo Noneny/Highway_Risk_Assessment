@@ -29,29 +29,41 @@ class DynamicCoefficientCalculator:
 
     def _parse_saturation_thresholds(self) -> List[Dict[str, float]]:
         """解析饱和度阈值配置"""
-        thresholds = []
-        config_section = self.config.get('saturation_thresholds', {})
+        config_section = self.config.get('saturation_thresholds', [])
 
-        i = 1
-        while True:
-            max_key = f"{i}_max"
-            coef_key = f"{i}_coef"
+        if isinstance(config_section, list):
+            thresholds = [
+                {
+                    'max': float(item['max']),
+                    'coef': float(item['coef'])
+                }
+                for item in config_section
+            ]
+        else:
+            # 兼容直接传入尚未解析的旧式配置字典。
+            thresholds = []
+            i = 1
+            while True:
+                max_key = f"{i}_max"
+                coef_key = f"{i}_coef"
 
-            if max_key not in config_section or coef_key not in config_section:
-                break
+                if max_key not in config_section or coef_key not in config_section:
+                    break
 
-            max_val = config_section[max_key]
-            if max_val == 'inf':
-                max_val = float('inf')
-            else:
-                max_val = float(max_val)
+                max_val = config_section[max_key]
+                if str(max_val).lower() == 'inf':
+                    max_val = float('inf')
+                else:
+                    max_val = float(max_val)
 
-            threshold = {
-                'max': max_val,
-                'coef': float(config_section[coef_key])
-            }
-            thresholds.append(threshold)
-            i += 1
+                thresholds.append({
+                    'max': max_val,
+                    'coef': float(config_section[coef_key])
+                })
+                i += 1
+
+        if not thresholds:
+            raise ValueError("饱和度调节系数阈值配置为空")
 
         # 按max值排序
         thresholds.sort(key=lambda x: x['max'])
@@ -59,23 +71,35 @@ class DynamicCoefficientCalculator:
 
     def _parse_equilibrium_thresholds(self) -> List[Dict[str, float]]:
         """解析均衡性阈值配置"""
-        thresholds = []
-        config_section = self.config.get('equilibrium_thresholds', {})
+        config_section = self.config.get('equilibrium_thresholds', [])
 
-        i = 1
-        while True:
-            min_key = f"{i}_min"
-            coef_key = f"{i}_coef"
+        if isinstance(config_section, list):
+            thresholds = [
+                {
+                    'min': float(item['min']),
+                    'coef': float(item['coef'])
+                }
+                for item in config_section
+            ]
+        else:
+            # 兼容直接传入尚未解析的旧式配置字典。
+            thresholds = []
+            i = 1
+            while True:
+                min_key = f"{i}_min"
+                coef_key = f"{i}_coef"
 
-            if min_key not in config_section or coef_key not in config_section:
-                break
+                if min_key not in config_section or coef_key not in config_section:
+                    break
 
-            threshold = {
-                'min': float(config_section[min_key]),
-                'coef': float(config_section[coef_key])
-            }
-            thresholds.append(threshold)
-            i += 1
+                thresholds.append({
+                    'min': float(config_section[min_key]),
+                    'coef': float(config_section[coef_key])
+                })
+                i += 1
+
+        if not thresholds:
+            raise ValueError("均衡性调节系数阈值配置为空")
 
         # 按min值降序排序
         thresholds.sort(key=lambda x: x['min'], reverse=True)
